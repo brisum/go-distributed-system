@@ -91,7 +91,20 @@ func (storage *DataStorage) Set(key string, value interface{}) {
 }
 
 func (storage *DataStorage) Get(key string) interface{} {
-	return nil
+	pieces := strings.Split(key, "/")
+	lastPiece, pieces := pieces[len(pieces)-1], pieces[:len(pieces)-1]
+	storagePointer := storage
+
+	for _, piece := range pieces {
+		nestedStoragePointer, isExists := storagePointer.getStorage(piece)
+
+		if !isExists {
+			return nil
+		}
+		storagePointer = nestedStoragePointer
+	}
+
+	return storagePointer.data[lastPiece]
 }
 
 func (storage *DataStorage) Delete(key string) {

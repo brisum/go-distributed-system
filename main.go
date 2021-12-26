@@ -2,10 +2,8 @@ package main
 
 import (
 	"context"
-	"distributes_system/lib/datastorage"
 	eventsourcing "distributes_system/lib/event_sourcing"
 	accountDomain "distributes_system/project/virtual_pay_network/domain/account/domain"
-	accountDomainCommand "distributes_system/project/virtual_pay_network/domain/account/domain/command"
 	"fmt"
 	pgx "github.com/jackc/pgx/v4"
 	"github.com/joho/godotenv"
@@ -34,15 +32,13 @@ func main() {
 	accountUuid := uuid.Must(uuid.FromString("65198e5e-f881-4d6e-ac98-502f2e3b9170"))
 	accountAggregate := accountDomain.NewAccountAggregate(accountUuid)
 
-	createAccountCommand := accountDomainCommand.NewCreateAccountCommand("Alex", "Dev")
-	accountAggregate.ProcessCreateAccountCommand(*createAccountCommand)
+	//createAccountCommand := accountDomainCommand.NewCreateAccountCommand("Alex", "Dev")
+	//accountAggregate.ProcessCreateAccountCommand(*createAccountCommand)
+	//store.Save(&ctx, accountAggregate)
 
-	store.Save(&ctx, accountAggregate)
-
-	storage := datastorage.NewEmptyDataStorage()
-	storage.UnmarshalJSON("{\"balance\":{\"bonus\":0,\"cash\":0},\"firstName\":\"Alex\",\"lastName\":\"Dev\"}")
-
-	//fmt.Printf("%+v\n", event)
+	accountAggregate = accountDomain.NewAccountAggregate(accountUuid)
+	store.Load(&ctx, accountAggregate)
+	fmt.Printf("%+v\n", accountAggregate)
 
 	//stream.AppendEvent(event_store.NewEvent(
 	//	"AccountCreated", "{balance: 0}", "", "",

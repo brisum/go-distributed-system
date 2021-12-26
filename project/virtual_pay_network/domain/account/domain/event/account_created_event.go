@@ -20,6 +20,14 @@ func NewEmptyAccountCreatedEvent() *AccountCreatedEvent {
 	return &AccountCreatedEvent{}
 }
 
+func (event *AccountCreatedEvent) GetFirstName() string {
+	return event.firstName
+}
+
+func (event *AccountCreatedEvent) GetLastName() string {
+	return event.lastName
+}
+
 func (event *AccountCreatedEvent) ToDataStorage() *datastorage.DataStorage {
 	storage := datastorage.NewEmptyDataStorage()
 
