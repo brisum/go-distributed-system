@@ -3,7 +3,6 @@ package domain
 import (
 	"distributes_system/lib/datastorage"
 	eventsourcing "distributes_system/lib/event_sourcing"
-	"distributes_system/project/virtual_pay_network/domain/account/domain/command"
 	accountDomainEvent "distributes_system/project/virtual_pay_network/domain/account/domain/event"
 	"errors"
 	"fmt"
@@ -15,12 +14,19 @@ type AccountAggregate struct {
 	aggregateRoot eventsourcing.AggregateRoot
 	firstName     string
 	lastName      string
+	balance       map[string]int
 }
 
 func NewAccountAggregate(entityUuid uuid.UUID) *AccountAggregate {
 	aggregate := AccountAggregate{
 		aggregateRoot: *eventsourcing.NewAggregateRoot("Account", entityUuid),
 	}
+
+	aggregate.firstName = ""
+	aggregate.lastName = ""
+	aggregate.balance = map[string]int{}
+	aggregate.balance["cash"] = 0
+	aggregate.balance["bonus"] = 0
 
 	return &aggregate
 }
@@ -37,42 +43,42 @@ func (aggregate *AccountAggregate) GetEvents() *eventsourcing.EventStream {
 	return aggregate.aggregateRoot.GetUncommittedEvents()
 }
 
-func (aggregate *AccountAggregate) ProcessEvent(event eventsourcing.EventInterface) {
-
-}
-
 func (aggregate *AccountAggregate) CreateEventFromDataStorage(
 	eventType string,
 	storage datastorage.DataStorage,
 ) (eventsourcing.EventInterface, error) {
 	switch eventType {
 	case "AccountCreated":
-		return accountDomainEvent.NewAccountCreatedEvent(
-			storage.Get("firstName").(string),
-			storage.Get("lastName").(string),
-		), nil
+		event := accountDomainEvent.NewAccountCreatedEvent("", "")
+		event.FromDataStorage(storage)
+		return event, nil
+
+	case "BalanceIncreased":
+		event := accountDomainEvent.NewBalanceIncreasedEvent(0, 0)
+		event.FromDataStorage(storage)
+		return event, nil
 	}
 
 	return nil, errors.New(fmt.Sprintf("Event \"%s\" not created.", eventType))
 }
 
-func (aggregate *AccountAggregate) ProcessCreateAccountCommand(command command.CreateAccountCommand) {
-	aggregate.aggregateRoot.AppendEvent(accountDomainEvent.NewAccountCreatedEvent(
-		command.GetFirstName(),
-		command.GetLastName(),
-	))
-}
-
-func (aggregate *AccountAggregate) ApplyEvent(event eventsourcing.EventInterface) {
+func (aggregate *AccountAggregate) ProcessEvent(event eventsourcing.EventInterface) {
 	eventType := eventsourcing.GetEventType(event)
 	methodName := "Apply" + eventType + "Event"
-	arguments := []reflect.Value{reflect.ValueOf(event)}
+	methodArguments := []reflect.Value{reflect.ValueOf(event)}
+	reflect.ValueOf(aggregate).MethodByName(methodName).Call(methodArguments)
 
-	reflect.ValueOf(aggregate).MethodByName(methodName).Call(arguments)
+	aggregate.aggregateRoot.AppendEvent(event)
 }
 
 func (aggregate *AccountAggregate) ApplyAccountCreatedEvent(event eventsourcing.EventInterface) {
 	castedEvent := event.(*accountDomainEvent.AccountCreatedEvent)
 	aggregate.firstName = castedEvent.GetFirstName()
 	aggregate.lastName = castedEvent.GetLastName()
+}
+
+func (aggregate *AccountAggregate) ApplyBalanceIncreasedEvent(event eventsourcing.EventInterface) {
+	castedEvent := event.(*accountDomainEvent.BalanceIncreasedEvent)
+	aggregate.balance["cash"] = aggregate.balance["cash"] + castedEvent.GetCash()
+	aggregate.balance["bonus"] = aggregate.balance["bonus"] + castedEvent.GetBonus()
 }

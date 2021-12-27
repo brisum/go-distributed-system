@@ -3,18 +3,20 @@ package eventsourcing
 import (
 	"context"
 	"distributes_system/lib/datastorage"
-	"fmt"
 	"github.com/georgysavva/scany/pgxscan"
 	pgx "github.com/jackc/pgx/v4"
+	"reflect"
 )
 
 type EventStore struct {
-	connection *pgx.Conn
+	connection    *pgx.Conn
+	eventRegistry *EventRegistry
 }
 
 func NewEventStore(connection *pgx.Conn) *EventStore {
 	store := EventStore{
-		connection: connection,
+		connection:    connection,
+		eventRegistry: NewEventRegistry(),
 	}
 
 	return &store
@@ -79,51 +81,18 @@ func (store *EventStore) Load(ctx *context.Context, aggregate AggregateInterface
 	for _, eventRow := range eventRows {
 		storage := datastorage.NewEmptyDataStorage()
 		storage.UnmarshalJSON(eventRow.EventData)
+
 		event, _ := aggregate.CreateEventFromDataStorage(eventRow.EventType, *storage)
 
-		aggregate.ApplyEvent(event)
-
-		fmt.Printf("%+v\n", eventRow)
-		fmt.Printf("%+v\n", event)
+		methodName := "Apply" + eventRow.EventType + "Event"
+		methodArguments := []reflect.Value{reflect.ValueOf(event)}
+		aggregateValue := reflect.ValueOf(aggregate)
+		aggregateValue.MethodByName(methodName).Call(methodArguments)
 	}
 
 	return nil
 }
 
-//func (store *EventStore) Append(ctx *context.Context, stream *EventStream) error {
-//	reversedEvents := make([]Event, 0)
-//	for _, event := range stream.GetEvents() {
-//		reversedEvents = append(reversedEvents, event)
-//	}
-//
-//	tx, err := store.connection.Begin(*ctx)
-//	if err != nil {
-//		return err
-//	}
-//	defer tx.Rollback(*ctx)
-//
-//	for _, event := range reversedEvents {
-//		_, err = tx.Exec(
-//			*ctx,
-//			"INSERT INTO event (event_type, entity_type, entity_uuid, event_data, promoter, triggering_event) "+
-//				"VALUES ($1, $2, $3, $4, $5, $6)",
-//			event.GetEventType(),
-//			stream.GetEntityType(),
-//			stream.GetEntityUuid().String(),
-//			event.GetEventData(),
-//			event.GetPromoter(),
-//			event.GetTriggeringEvent(),
-//		)
-//
-//		if err != nil {
-//			return err
-//		}
-//	}
-//
-//	err = tx.Commit(*ctx)
-//	if err != nil {
-//		return err
-//	}
-//
-//	return nil
-//}
+func (store *EventStore) RegisterEvent(eventType string, eventReflectType reflect.Type) {
+	store.eventRegistry.Register(eventType, eventReflectType)
+}

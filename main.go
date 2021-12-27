@@ -4,12 +4,14 @@ import (
 	"context"
 	eventsourcing "distributes_system/lib/event_sourcing"
 	accountDomain "distributes_system/project/virtual_pay_network/domain/account/domain"
+	accountDomainEvent "distributes_system/project/virtual_pay_network/domain/account/domain/event"
 	"fmt"
 	pgx "github.com/jackc/pgx/v4"
 	"github.com/joho/godotenv"
 	uuid "github.com/satori/go.uuid"
 	"log"
 	"os"
+	"reflect"
 )
 
 func main() {
@@ -28,12 +30,15 @@ func main() {
 	defer connection.Close(context.Background())
 
 	store := eventsourcing.NewEventStore(connection)
+	store.RegisterEvent("Account.AccountCreated", reflect.TypeOf(accountDomainEvent.AccountCreatedEvent{}))
 
 	accountUuid := uuid.Must(uuid.FromString("65198e5e-f881-4d6e-ac98-502f2e3b9170"))
 	accountAggregate := accountDomain.NewAccountAggregate(accountUuid)
 
-	//createAccountCommand := accountDomainCommand.NewCreateAccountCommand("Alex", "Dev")
-	//accountAggregate.ProcessCreateAccountCommand(*createAccountCommand)
+	//accountAggregate.ProcessEvent(accountDomainEvent.NewAccountCreatedEvent("Alex", "Dev"))
+	//accountAggregate.ProcessEvent(accountDomainEvent.NewBalanceIncreasedEvent(20, 0))
+	//accountAggregate.ProcessEvent(accountDomainEvent.NewBalanceIncreasedEvent(0, 10))
+	//accountAggregate.ProcessEvent(accountDomainEvent.NewBalanceIncreasedEvent(50, 100))
 	//store.Save(&ctx, accountAggregate)
 
 	accountAggregate = accountDomain.NewAccountAggregate(accountUuid)

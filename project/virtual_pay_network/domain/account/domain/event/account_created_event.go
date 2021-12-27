@@ -39,6 +39,7 @@ func (event *AccountCreatedEvent) ToDataStorage() *datastorage.DataStorage {
 	return storage
 }
 
-func (event *AccountCreatedEvent) FromDataStorage(dataStorage datastorage.DataStorage) {
-
+func (event *AccountCreatedEvent) FromDataStorage(storage datastorage.DataStorage) {
+	event.firstName = storage.Get("firstName").(string)
+	event.lastName = storage.Get("lastName").(string)
 }
