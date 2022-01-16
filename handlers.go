@@ -11,6 +11,7 @@ import (
 	uuid "github.com/satori/go.uuid"
 	"log"
 	"os"
+	"reflect"
 )
 
 func main() {
@@ -29,13 +30,12 @@ func main() {
 	defer connection.Close(context.Background())
 
 	store := eventsourcing.NewEventStore(connection)
-	//store.RegisterEvent("Account.AccountCreated", reflect.TypeOf(accountDomainEvent.AccountCreatedEvent{}))
+	store.RegisterEvent("Account.AccountCreated", reflect.TypeOf(accountDomainEvent.AccountCreatedEvent{}))
 
 	accountUuid := uuid.Must(uuid.FromString("65198e5e-f881-4d6e-ac98-502f2e3b9170"))
 	accountAggregate := accountDomain.NewAccountAggregate(accountUuid)
-	store.Load(&ctx, accountAggregate)
 
-	// accountAggregate.ProcessEvent(accountDomainEvent.NewAccountCreatedEvent("Alex", "Dev"))
+	accountAggregate.ProcessEvent(accountDomainEvent.NewAccountCreatedEvent("Alex", "Dev"))
 	accountAggregate.ProcessEvent(accountDomainEvent.NewBalanceIncreasedEvent(20, 0))
 	accountAggregate.ProcessEvent(accountDomainEvent.NewBalanceIncreasedEvent(0, 10))
 	accountAggregate.ProcessEvent(accountDomainEvent.NewBalanceIncreasedEvent(50, 100))

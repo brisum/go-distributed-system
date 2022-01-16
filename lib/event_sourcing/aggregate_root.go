@@ -7,14 +7,17 @@ import (
 type AggregateRoot struct {
 	entityType        string
 	entityUuid        uuid.UUID
-	previousVersion   int
+	entityVersion     int
+	snapshotStrategy  int
 	uncommittedEvents []EventInterface
 }
 
-func NewAggregateRoot(entityType string, entityUuid uuid.UUID) *AggregateRoot {
+func NewAggregateRoot(entityType string, entityUuid uuid.UUID, snapshotStrategy int) *AggregateRoot {
 	return &AggregateRoot{
 		entityType:        entityType,
 		entityUuid:        entityUuid,
+		entityVersion:     0,
+		snapshotStrategy:  snapshotStrategy,
 		uncommittedEvents: make([]EventInterface, 0),
 	}
 }
@@ -25,6 +28,18 @@ func (aggregate *AggregateRoot) GetEntityType() string {
 
 func (aggregate *AggregateRoot) GetEntityUuid() uuid.UUID {
 	return aggregate.entityUuid
+}
+
+func (aggregate *AggregateRoot) SetVersion(version int) {
+	aggregate.entityVersion = version
+}
+
+func (aggregate *AggregateRoot) GetVersion() int {
+	return aggregate.entityVersion
+}
+
+func (aggregate *AggregateRoot) GetSnapshotStrategy() int {
+	return aggregate.snapshotStrategy
 }
 
 func (aggregate *AggregateRoot) AppendEvent(event EventInterface) {

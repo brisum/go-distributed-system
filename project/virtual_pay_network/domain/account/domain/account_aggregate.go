@@ -19,7 +19,7 @@ type AccountAggregate struct {
 
 func NewAccountAggregate(entityUuid uuid.UUID) *AccountAggregate {
 	aggregate := AccountAggregate{
-		aggregateRoot: *eventsourcing.NewAggregateRoot("Account", entityUuid),
+		aggregateRoot: *eventsourcing.NewAggregateRoot("Account", entityUuid, 2),
 	}
 
 	aggregate.firstName = ""
@@ -39,8 +39,41 @@ func (aggregate *AccountAggregate) GetEntityUuid() uuid.UUID {
 	return aggregate.aggregateRoot.GetEntityUuid()
 }
 
+func (aggregate *AccountAggregate) SetVersion(version int) {
+	aggregate.aggregateRoot.SetVersion(version)
+}
+
+func (aggregate *AccountAggregate) GetVersion() int {
+	return aggregate.aggregateRoot.GetVersion()
+}
+
+func (aggregate *AccountAggregate) GetSnapshotStrategy() int {
+	return aggregate.aggregateRoot.GetSnapshotStrategy()
+}
+
 func (aggregate *AccountAggregate) GetEvents() *eventsourcing.EventStream {
 	return aggregate.aggregateRoot.GetUncommittedEvents()
+}
+
+func (aggregate *AccountAggregate) ProcessEvent(event eventsourcing.EventInterface) {
+	eventType := eventsourcing.GetEventType(event)
+	methodName := "Apply" + eventType + "Event"
+	methodArguments := []reflect.Value{reflect.ValueOf(event)}
+
+	reflect.ValueOf(aggregate).MethodByName(methodName).Call(methodArguments)
+	aggregate.aggregateRoot.AppendEvent(event)
+}
+
+func (aggregate *AccountAggregate) ApplyAccountCreatedEvent(event eventsourcing.EventInterface) {
+	castedEvent := event.(*accountDomainEvent.AccountCreatedEvent)
+	aggregate.firstName = castedEvent.GetFirstName()
+	aggregate.lastName = castedEvent.GetLastName()
+}
+
+func (aggregate *AccountAggregate) ApplyBalanceIncreasedEvent(event eventsourcing.EventInterface) {
+	castedEvent := event.(*accountDomainEvent.BalanceIncreasedEvent)
+	aggregate.balance["cash"] = aggregate.balance["cash"] + castedEvent.GetCash()
+	aggregate.balance["bonus"] = aggregate.balance["bonus"] + castedEvent.GetBonus()
 }
 
 func (aggregate *AccountAggregate) CreateEventFromDataStorage(
@@ -60,25 +93,4 @@ func (aggregate *AccountAggregate) CreateEventFromDataStorage(
 	}
 
 	return nil, errors.New(fmt.Sprintf("Event \"%s\" not created.", eventType))
-}
-
-func (aggregate *AccountAggregate) ProcessEvent(event eventsourcing.EventInterface) {
-	eventType := eventsourcing.GetEventType(event)
-	methodName := "Apply" + eventType + "Event"
-	methodArguments := []reflect.Value{reflect.ValueOf(event)}
-	reflect.ValueOf(aggregate).MethodByName(methodName).Call(methodArguments)
-
-	aggregate.aggregateRoot.AppendEvent(event)
-}
-
-func (aggregate *AccountAggregate) ApplyAccountCreatedEvent(event eventsourcing.EventInterface) {
-	castedEvent := event.(*accountDomainEvent.AccountCreatedEvent)
-	aggregate.firstName = castedEvent.GetFirstName()
-	aggregate.lastName = castedEvent.GetLastName()
-}
-
-func (aggregate *AccountAggregate) ApplyBalanceIncreasedEvent(event eventsourcing.EventInterface) {
-	castedEvent := event.(*accountDomainEvent.BalanceIncreasedEvent)
-	aggregate.balance["cash"] = aggregate.balance["cash"] + castedEvent.GetCash()
-	aggregate.balance["bonus"] = aggregate.balance["bonus"] + castedEvent.GetBonus()
 }

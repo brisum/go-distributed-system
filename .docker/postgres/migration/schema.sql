@@ -1,6 +1,16 @@
 -- CREATE DATABASE snapshot_sourcing
 -- \i /migration/schema.sql
 
+-- Entity
+DROP TABLE IF EXISTS entity;
+CREATE TABLE entity
+(
+    entity_type    varchar(1000) not null,
+    entity_uuid    varchar(36)   not null,
+    entity_version integer       not null
+);
+ALTER TABLE ONLY entity ADD CONSTRAINT entity_entity_uuid PRIMARY KEY (entity_uuid);
+
 -- event
 DROP TABLE IF EXISTS event;
 CREATE TABLE event
@@ -22,16 +32,6 @@ CREATE SEQUENCE event_id_sequence
     MAXVALUE 99999999 CACHE 1
     OWNED BY event.event_id;
 
--- Entity
-DROP TABLE IF EXISTS entity;
-CREATE TABLE entity
-(
-    entity_type    varchar(1000) not null,
-    entity_uuid    varchar(36)   not null,
-    entity_version integer       not null
-);
-ALTER TABLE ONLY entity ADD CONSTRAINT entity_entity_uuid PRIMARY KEY (entity_uuid);
-
 -- Snapshot
 DROP TABLE IF EXISTS snapshot;
 CREATE TABLE snapshot
@@ -43,4 +43,3 @@ CREATE TABLE snapshot
     triggering_event varchar(1000) default null
 );
 ALTER TABLE ONLY snapshot ADD CONSTRAINT snapshot_entity_uuid PRIMARY KEY (entity_uuid);
-
