@@ -12,5 +12,6 @@ type AggregateInterface interface {
 	GetVersion() int
 	GetEvents() *EventStream
 	ProcessEvent(event EventInterface)
+	GetSnapshotStrategy() int
 	CreateEventFromDataStorage(eventType string, storage datastorage.DataStorage) (EventInterface, error)
 }

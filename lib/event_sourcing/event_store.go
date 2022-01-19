@@ -35,12 +35,12 @@ func (store *EventStore) Save(ctx *context.Context, aggregate AggregateInterface
 		return err
 	}
 
-	err = store.saveEvents(ctx, tx, aggregate)
+	lastEventId, err := store.saveEvents(ctx, tx, aggregate)
 	if err != nil {
 		return err
 	}
 
-	err = store.saveSnapshot(ctx, tx, aggregate, newVersion)
+	err = store.saveSnapshot(ctx, tx, aggregate, newVersion, lastEventId)
 	if err != nil {
 		return err
 	}
@@ -95,8 +95,9 @@ func (store *EventStore) saveEntity(ctx *context.Context, tx pgx.Tx, aggregate A
 	return newVersion, nil
 }
 
-func (store *EventStore) saveEvents(ctx *context.Context, tx pgx.Tx, aggregate AggregateInterface) error {
+func (store *EventStore) saveEvents(ctx *context.Context, tx pgx.Tx, aggregate AggregateInterface) (int, error) {
 	stream := aggregate.GetEvents()
+	lastEventId := 0
 
 	reversedEvents := make([]EventInterface, 0)
 	for _, event := range stream.GetEvents() {
@@ -104,10 +105,10 @@ func (store *EventStore) saveEvents(ctx *context.Context, tx pgx.Tx, aggregate A
 	}
 
 	for _, event := range reversedEvents {
-		_, err := tx.Exec(
+		result := tx.QueryRow(
 			*ctx,
 			"INSERT INTO event (event_type, entity_type, entity_uuid, event_data, promoter, triggering_event) "+
-				"VALUES ($1, $2, $3, $4, $5, $6)",
+				"VALUES ($1, $2, $3, $4, $5, $6) RETURNING event_id",
 			GetEventType(event),
 			aggregate.GetEntityType(),
 			aggregate.GetEntityUuid().String(),
@@ -116,15 +117,69 @@ func (store *EventStore) saveEvents(ctx *context.Context, tx pgx.Tx, aggregate A
 			"",
 		)
 
+		if result == nil {
+			return 0, errors.New("Not inserted event")
+		}
+
+		err := result.Scan(&lastEventId)
 		if err != nil {
-			return err
+			return 0, err
 		}
 	}
 
-	return nil
+	return lastEventId, nil
 }
 
-func (store *EventStore) saveSnapshot(ctx *context.Context, tx pgx.Tx, aggregate AggregateInterface, newVersion int) error {
+func (store *EventStore) saveSnapshot(
+	ctx *context.Context,
+	tx pgx.Tx,
+	aggregate AggregateInterface,
+	newVersion int,
+	lastEventId int,
+) error {
+	if 1 == newVersion {
+		result, err := tx.Exec(
+			*ctx,
+			"INSERT INTO snapshot (event_id, entity_type, entity_uuid, snapshot_data, triggering_event) "+
+				"VALUES ($1, $2, $3, $4, $5)",
+			lastEventId,
+			aggregate.GetEntityType(),
+			aggregate.GetEntityUuid().String(),
+			"",
+			"",
+		)
+
+		if err != nil {
+			return err
+		}
+		if 1 != result.RowsAffected() {
+			return errors.New("Snapshot not inserted.")
+		}
+
+		return nil
+	}
+
+	if 0 != newVersion%aggregate.GetSnapshotStrategy() {
+		return nil
+	}
+
+	result, err := tx.Exec(
+		*ctx,
+		"UPDATE snapshot SET event_id = $1, snapshot_data = $2, triggering_event = $3"+
+			"WHERE entity_type = $4 AND entity_uuid = $5",
+		lastEventId,
+		"",
+		"",
+		aggregate.GetEntityType(),
+		aggregate.GetEntityUuid().String(),
+	)
+	if err != nil {
+		return err
+	}
+	if 1 != result.RowsAffected() {
+		return errors.New("Snapshot not updated.")
+	}
+
 	return nil
 }
 
