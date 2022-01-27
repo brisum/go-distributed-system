@@ -1,4 +1,4 @@
-package datastorage
+package eventsourcing
 
 import (
 	"encoding/json"

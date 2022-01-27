@@ -1,7 +1,6 @@
 package eventsourcing
 
 import (
-	"distributes_system/lib/datastorage"
 	uuid "github.com/satori/go.uuid"
 )
 
@@ -13,5 +12,5 @@ type AggregateInterface interface {
 	GetEvents() *EventStream
 	ProcessEvent(event EventInterface)
 	GetSnapshotStrategy() int
-	CreateEventFromDataStorage(eventType string, storage datastorage.DataStorage) (EventInterface, error)
+	CreateEventFromDataStorage(eventType string, storage DataStorage) (EventInterface, error)
 }

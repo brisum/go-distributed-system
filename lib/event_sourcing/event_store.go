@@ -2,7 +2,6 @@ package eventsourcing
 
 import (
 	"context"
-	"distributes_system/lib/datastorage"
 	"errors"
 	"github.com/georgysavva/scany/pgxscan"
 	pgx "github.com/jackc/pgx/v4"
@@ -227,7 +226,7 @@ func (store *EventStore) loadEvents(ctx *context.Context, aggregate AggregateInt
 	}
 
 	for _, eventRow := range eventRows {
-		storage := datastorage.NewEmptyDataStorage()
+		storage := NewEmptyDataStorage()
 		storage.UnmarshalJSON(eventRow.EventData)
 
 		event, _ := aggregate.CreateEventFromDataStorage(eventRow.EventType, *storage)

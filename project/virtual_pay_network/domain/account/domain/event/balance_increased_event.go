@@ -1,7 +1,7 @@
 package event
 
 import (
-	"distributes_system/lib/datastorage"
+	"distributes_system/lib/event_sourcing"
 )
 
 type BalanceIncreasedEvent struct {
@@ -28,8 +28,8 @@ func (event *BalanceIncreasedEvent) GetBonus() int {
 	return event.bonus
 }
 
-func (event *BalanceIncreasedEvent) ToDataStorage() *datastorage.DataStorage {
-	storage := datastorage.NewEmptyDataStorage()
+func (event *BalanceIncreasedEvent) ToDataStorage() *eventsourcing.DataStorage {
+	storage := eventsourcing.NewEmptyDataStorage()
 
 	storage.Set("balance/cash", event.cash)
 	storage.Set("balance/bonus", event.bonus)
@@ -37,7 +37,7 @@ func (event *BalanceIncreasedEvent) ToDataStorage() *datastorage.DataStorage {
 	return storage
 }
 
-func (event *BalanceIncreasedEvent) FromDataStorage(storage datastorage.DataStorage) {
+func (event *BalanceIncreasedEvent) FromDataStorage(storage eventsourcing.DataStorage) {
 	event.cash = int(storage.Get("balance/cash").(float64))
 	event.bonus = int(storage.Get("balance/bonus").(float64))
 }

@@ -1,7 +1,7 @@
 package event
 
 import (
-	"distributes_system/lib/datastorage"
+	"distributes_system/lib/event_sourcing"
 )
 
 type AccountCreatedEvent struct {
@@ -28,8 +28,8 @@ func (event *AccountCreatedEvent) GetLastName() string {
 	return event.lastName
 }
 
-func (event *AccountCreatedEvent) ToDataStorage() *datastorage.DataStorage {
-	storage := datastorage.NewEmptyDataStorage()
+func (event *AccountCreatedEvent) ToDataStorage() *eventsourcing.DataStorage {
+	storage := eventsourcing.NewEmptyDataStorage()
 
 	storage.Set("firstName", event.firstName)
 	storage.Set("lastName", event.lastName)
@@ -39,7 +39,7 @@ func (event *AccountCreatedEvent) ToDataStorage() *datastorage.DataStorage {
 	return storage
 }
 
-func (event *AccountCreatedEvent) FromDataStorage(storage datastorage.DataStorage) {
+func (event *AccountCreatedEvent) FromDataStorage(storage eventsourcing.DataStorage) {
 	event.firstName = storage.Get("firstName").(string)
 	event.lastName = storage.Get("lastName").(string)
 }

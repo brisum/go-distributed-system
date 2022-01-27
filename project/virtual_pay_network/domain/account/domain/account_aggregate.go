@@ -1,7 +1,6 @@
 package domain
 
 import (
-	"distributes_system/lib/datastorage"
 	eventsourcing "distributes_system/lib/event_sourcing"
 	accountDomainEvent "distributes_system/project/virtual_pay_network/domain/account/domain/event"
 	"errors"
@@ -78,7 +77,7 @@ func (aggregate *AccountAggregate) ApplyBalanceIncreasedEvent(event eventsourcin
 
 func (aggregate *AccountAggregate) CreateEventFromDataStorage(
 	eventType string,
-	storage datastorage.DataStorage,
+	storage eventsourcing.DataStorage,
 ) (eventsourcing.EventInterface, error) {
 	switch eventType {
 	case "AccountCreated":
