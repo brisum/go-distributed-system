@@ -4,7 +4,6 @@ import (
 	"context"
 	eventsourcing "distributes_system/lib/event_sourcing"
 	accountDomain "distributes_system/project/virtual_pay_network/domain/account/domain"
-	accountDomainEvent "distributes_system/project/virtual_pay_network/domain/account/domain/event"
 	"fmt"
 	pgx "github.com/jackc/pgx/v4"
 	"github.com/joho/godotenv"
@@ -33,16 +32,29 @@ func main() {
 
 	accountUuid := uuid.Must(uuid.FromString("65198e5e-f881-4d6e-ac98-502f2e3b9170"))
 	accountAggregate := accountDomain.NewAccountAggregate(accountUuid)
-	store.Load(&ctx, accountAggregate)
+	err = store.Load(&ctx, accountAggregate)
+	if nil != err {
+		fmt.Printf("%+v\n", err)
+		return
+	}
 
 	// accountAggregate.ProcessEvent(accountDomainEvent.NewAccountCreatedEvent("Alex", "Dev"))
-	accountAggregate.ProcessEvent(accountDomainEvent.NewBalanceIncreasedEvent(20, 0))
-	accountAggregate.ProcessEvent(accountDomainEvent.NewBalanceIncreasedEvent(0, 10))
-	accountAggregate.ProcessEvent(accountDomainEvent.NewBalanceIncreasedEvent(50, 100))
-	store.Save(&ctx, accountAggregate)
+	//accountAggregate.ProcessEvent(accountDomainEvent.NewBalanceIncreasedEvent(20, 0))
+	//accountAggregate.ProcessEvent(accountDomainEvent.NewBalanceIncreasedEvent(0, 10))
+	//accountAggregate.ProcessEvent(accountDomainEvent.NewBalanceIncreasedEvent(50, 100))
+	//err = store.Save(&ctx, accountAggregate)
+	//if nil != err {
+	//	fmt.Printf("%+v\n", err)
+	//	return
+	//}
 
-	accountAggregate = accountDomain.NewAccountAggregate(accountUuid)
-	store.Load(&ctx, accountAggregate)
+	//accountAggregate = accountDomain.NewAccountAggregate(accountUuid)
+	//err = store.Load(&ctx, accountAggregate)
+	//if nil != err {
+	//	fmt.Printf("%+v\n", err)
+	//	return
+	//}
+
 	fmt.Printf("%+v\n", accountAggregate)
 
 	//stream.AppendEvent(event_store.NewEvent(

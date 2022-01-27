@@ -9,11 +9,16 @@ import (
 	"reflect"
 )
 
+type balance struct {
+	cash  int
+	bonus int
+}
+
 type AccountAggregate struct {
 	aggregateRoot eventsourcing.AggregateRoot
 	firstName     string
 	lastName      string
-	balance       map[string]int
+	balance       balance
 }
 
 func NewAccountAggregate(entityUuid uuid.UUID) *AccountAggregate {
@@ -23,9 +28,7 @@ func NewAccountAggregate(entityUuid uuid.UUID) *AccountAggregate {
 
 	aggregate.firstName = ""
 	aggregate.lastName = ""
-	aggregate.balance = map[string]int{}
-	aggregate.balance["cash"] = 0
-	aggregate.balance["bonus"] = 0
+	aggregate.balance = balance{cash: 0, bonus: 0}
 
 	return &aggregate
 }
@@ -71,8 +74,26 @@ func (aggregate *AccountAggregate) ApplyAccountCreatedEvent(event eventsourcing.
 
 func (aggregate *AccountAggregate) ApplyBalanceIncreasedEvent(event eventsourcing.EventInterface) {
 	castedEvent := event.(*accountDomainEvent.BalanceIncreasedEvent)
-	aggregate.balance["cash"] = aggregate.balance["cash"] + castedEvent.GetCash()
-	aggregate.balance["bonus"] = aggregate.balance["bonus"] + castedEvent.GetBonus()
+	aggregate.balance.cash = aggregate.balance.cash + castedEvent.GetCash()
+	aggregate.balance.bonus = aggregate.balance.bonus + castedEvent.GetBonus()
+}
+
+func (aggregate *AccountAggregate) ToDataStorage() *eventsourcing.DataStorage {
+	storage := eventsourcing.NewEmptyDataStorage()
+
+	storage.Set("firstName", aggregate.firstName)
+	storage.Set("lastName", aggregate.lastName)
+	storage.Set("balance/cash", aggregate.balance.cash)
+	storage.Set("balance/bonus", aggregate.balance.bonus)
+
+	return storage
+}
+
+func (aggregate *AccountAggregate) FromDataStorage(storage eventsourcing.DataStorage) {
+	aggregate.firstName = storage.Get("firstName").(string)
+	aggregate.lastName = storage.Get("lastName").(string)
+	aggregate.balance.cash = int(storage.Get("balance/cash").(float64))
+	aggregate.balance.bonus = int(storage.Get("balance/bonus").(float64))
 }
 
 func (aggregate *AccountAggregate) CreateEventFromDataStorage(

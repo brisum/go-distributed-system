@@ -144,7 +144,7 @@ func (store *EventStore) saveSnapshot(
 			lastEventId,
 			aggregate.GetEntityType(),
 			aggregate.GetEntityUuid().String(),
-			"",
+			aggregate.ToDataStorage().MarshalJSON(),
 			"",
 		)
 
@@ -167,7 +167,7 @@ func (store *EventStore) saveSnapshot(
 		"UPDATE snapshot SET event_id = $1, snapshot_data = $2, triggering_event = $3"+
 			"WHERE entity_type = $4 AND entity_uuid = $5",
 		lastEventId,
-		"",
+		aggregate.ToDataStorage().MarshalJSON(),
 		"",
 		aggregate.GetEntityType(),
 		aggregate.GetEntityUuid().String(),
@@ -182,17 +182,13 @@ func (store *EventStore) saveSnapshot(
 	return nil
 }
 
-//func (store *EventStore) RegisterEvent(eventType string, eventReflectType reflect.Type) {
-//	store.eventRegistry.Register(eventType, eventReflectType)
-//}
-
 func (store *EventStore) Load(ctx *context.Context, aggregate AggregateInterface) error {
-	err := store.loadSnapshot(ctx, aggregate)
+	eventId, err := store.loadSnapshot(ctx, aggregate)
 	if err != nil {
 		return err
 	}
 
-	err = store.loadEvents(ctx, aggregate)
+	err = store.loadEvents(ctx, aggregate, eventId)
 	if err != nil {
 		return err
 	}
@@ -205,20 +201,46 @@ func (store *EventStore) Load(ctx *context.Context, aggregate AggregateInterface
 	return nil
 }
 
-func (store *EventStore) loadSnapshot(ctx *context.Context, aggregate AggregateInterface) error {
-	return nil
+func (store *EventStore) loadSnapshot(ctx *context.Context, aggregate AggregateInterface) (int, error) {
+	snapshotRow := snapshotRow{}
+
+	err := pgxscan.Get(
+		*ctx,
+		store.connection,
+		&snapshotRow,
+		`SELECT event_id, snapshot_data FROM snapshot WHERE entity_type = $1 AND entity_uuid = $2 LIMIT 1`,
+		aggregate.GetEntityType(),
+		aggregate.GetEntityUuid().String(),
+	)
+
+	if err != nil {
+		return 0, err
+	}
+
+	if 0 == snapshotRow.EventId {
+		return 0, nil
+	}
+
+	storage := NewEmptyDataStorage()
+	storage.UnmarshalJSON(snapshotRow.SnapshotData)
+
+	aggregate.FromDataStorage(*storage)
+
+	return snapshotRow.EventId, nil
 }
 
-func (store *EventStore) loadEvents(ctx *context.Context, aggregate AggregateInterface) error {
-	eventRows := make([]EventRow, 0)
+func (store *EventStore) loadEvents(ctx *context.Context, aggregate AggregateInterface, fromEventId int) error {
+	eventRows := make([]eventRow, 0)
 
 	err := pgxscan.Select(
 		*ctx,
 		store.connection,
 		&eventRows,
-		`SELECT event_type, event_data FROM event WHERE entity_type = $1 and entity_uuid = $2`,
+		`SELECT event_type, event_data FROM event 
+				WHERE entity_type = $1 and entity_uuid = $2 and event_id > $3`,
 		aggregate.GetEntityType(),
 		aggregate.GetEntityUuid().String(),
+		fromEventId,
 	)
 
 	if err != nil {
@@ -241,7 +263,7 @@ func (store *EventStore) loadEvents(ctx *context.Context, aggregate AggregateInt
 }
 
 func (store *EventStore) loadEntity(ctx *context.Context, aggregate AggregateInterface) error {
-	entityRow := EntityRow{}
+	entityRow := entityRow{}
 
 	err := pgxscan.Get(
 		*ctx,
@@ -259,4 +281,20 @@ func (store *EventStore) loadEntity(ctx *context.Context, aggregate AggregateInt
 	aggregate.SetVersion(entityRow.EntityVersion)
 
 	return nil
+}
+
+type entityRow struct {
+	EntityType    string
+	EntityUuid    string
+	EntityVersion int
+}
+
+type snapshotRow struct {
+	EventId      int
+	SnapshotData string
+}
+
+type eventRow struct {
+	EventType string
+	EventData string
 }
